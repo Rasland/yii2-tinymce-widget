@@ -43,9 +43,9 @@ class TinyMce extends InputWidget
     {
         $id = $this->options['id'];
         if ($this->isInline()) {
-            $selector = "#$id";
+            $selector = "$id";
         } else {
-            $selector = "#$id-inline";
+            $selector = "$id-inline";
         }
         return $selector;
     }
@@ -100,7 +100,7 @@ class TinyMce extends InputWidget
 
         TinyMceAsset::register($view);
         $selector = $this->getInputSelector();
-        $this->clientOptions['selector'] = $selector;
+        $this->clientOptions['selector'] = "#{$selector}";
 
         // @codeCoverageIgnoreStart
         if ($this->language !== null && $this->language !== 'en') {
