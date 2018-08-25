@@ -43,9 +43,9 @@ class TinyMce extends InputWidget
     {
         $id = $this->options['id'];
         if ($this->isInline()) {
-            $selector = "$id";
-        } else {
             $selector = "$id-inline";
+        } else {
+            $selector = "$id";
         }
         return $selector;
     }
