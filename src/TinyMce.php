@@ -37,16 +37,57 @@ class TinyMce extends InputWidget
     public $triggerSaveOnBeforeValidateForm = true;
 
     /**
+     * @return string
+     */
+    protected function getInputSelector()
+    {
+        $id = $this->options['id'];
+        if ($this->isInline()) {
+            $selector = "#$id";
+        } else {
+            $selector = "#$id-inline";
+        }
+        return $selector;
+    }
+
+    /**
+     * @return bool
+     */
+    protected function isInline()
+    {
+        return isset($this->clientOptions['inline']) && $this->clientOptions['inline'] === true;
+    }
+
+    /**
+     * @return string
+     */
+    protected function renderInlineDiv()
+    {
+        return Html::tag('div', '', ['id' => $this->getInputSelector()]);
+    }
+
+    /**
      * @inheritdoc
      */
     public function run()
     {
         if ($this->hasModel()) {
-            echo Html::activeTextarea($this->model, $this->attribute, $this->options);
+            if ($this->isInline()) {
+                $result = Html::activeHiddenInput($this->model, $this->attribute, $this->options);
+                $result .= $this->renderInlineDiv();
+            } else {
+                $result = Html::activeTextarea($this->model, $this->attribute, $this->options);
+            }
         } else {
-            echo Html::textarea($this->name, $this->value, $this->options);
+            if ($this->isInline()) {
+                $result = Html::hiddenInput($this->name, $this->value, $this->options);
+                $result .= $this->renderInlineDiv();
+            } else {
+                $result = Html::textarea($this->name, $this->value, $this->options);
+            }
         }
         $this->registerClientScript();
+        return $result;
     }
 
     /**
@@ -58,10 +99,9 @@ class TinyMce extends InputWidget
         $view = $this->getView();
 
         TinyMceAsset::register($view);
+        $selector = $this->getInputSelector();
+        $this->clientOptions['selector'] = $selector;
 
-        $id = $this->options['id'];
-
-        $this->clientOptions['selector'] = "#$id";
         // @codeCoverageIgnoreStart
         if ($this->language !== null && $this->language !== 'en') {
             $langFile = "langs/{$this->language}.js";
@@ -75,7 +115,7 @@ class TinyMce extends InputWidget
 
         $js[] = "tinymce.init($options);";
         if ($this->triggerSaveOnBeforeValidateForm) {
-            $js[] = "$('#{$id}').parents('form').on('beforeValidate', function() { tinymce.triggerSave(); });";
+            $js[] = "$('#{$selector}').parents('form').on('beforeValidate', function() { tinymce.triggerSave(); });";
         }
         $view->registerJs(implode("\n", $js));
     }
