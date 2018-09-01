@@ -39,15 +39,17 @@ class TinyMce extends InputWidget
     /**
      * @return string
      */
-    protected function getInputSelector()
+    public function getInputId()
     {
-        $id = $this->options['id'];
-        if ($this->isInline()) {
-            $selector = "$id-inline";
-        } else {
-            $selector = "$id";
-        }
-        return $selector;
+        return $this->options['id'];
+    }
+
+    /**
+     * @return string
+     */
+    protected function getInlineId()
+    {
+        return $this->getInputId() . "-inline";
     }
 
     /**
@@ -61,9 +63,9 @@ class TinyMce extends InputWidget
     /**
      * @return string
      */
-    protected function renderInlineDiv()
+    protected function renderInline()
     {
-        return Html::tag('div', '', ['id' => $this->getInputSelector()]);
+        return Html::tag('div', '', ['id' => $this->getInlineId()]);
     }
 
     /**
@@ -71,23 +73,17 @@ class TinyMce extends InputWidget
      */
     public function run()
     {
-        if ($this->hasModel()) {
-            if ($this->isInline()) {
-                $result = Html::activeHiddenInput($this->model, $this->attribute, $this->options);
-                $result .= $this->renderInlineDiv();
-            } else {
-                $result = Html::activeTextarea($this->model, $this->attribute, $this->options);
-            }
-        } else {
-            if ($this->isInline()) {
-                $result = Html::hiddenInput($this->name, $this->value, $this->options);
-                $result .= $this->renderInlineDiv();
-            } else {
-                $result = Html::textarea($this->name, $this->value, $this->options);
-            }
+        $inline = '';
+        if ($this->isInline()) {
+            $this->options['style'] = "display: none;";
+            $this->clientOptions['hidden_input'] = false;
+            $inline = $this->renderInline();
         }
+        $result = $this->hasModel() ?
+            Html::activeTextarea($this->model, $this->attribute, $this->options) :
+            Html::textarea($this->name, $this->value, $this->options);
         $this->registerClientScript();
-        return $result;
+        return $result . $inline;
     }
 
     /**
@@ -99,8 +95,15 @@ class TinyMce extends InputWidget
         $view = $this->getView();
 
         TinyMceAsset::register($view);
-        $selector = $this->getInputSelector();
-        $this->clientOptions['selector'] = "#{$selector}";
+
+        $editorId = $this->getInputId();
+        if ($this->isInline()) {
+            $hiddenInputId = $editorId;
+            $editorId = $this->getInlineId();
+            $js[] = "$('#{$editorId}').parents('form').on('afterValidate', function() { $('#{$hiddenInputId}').val(tinyMCE.get('{$editorId}').getContent()); });";
+        }
+
+        $this->clientOptions['selector'] = "#{$editorId}";
 
         // @codeCoverageIgnoreStart
         if ($this->language !== null && $this->language !== 'en') {
@@ -115,7 +118,7 @@ class TinyMce extends InputWidget
 
         $js[] = "tinymce.init($options);";
         if ($this->triggerSaveOnBeforeValidateForm) {
-            $js[] = "$('#{$selector}').parents('form').on('beforeValidate', function() { tinymce.triggerSave(); });";
+            $js[] = "$('#{$editorId}').parents('form').on('beforeValidate', function() { tinymce.triggerSave(); });";
         }
         $view->registerJs(implode("\n", $js));
     }
